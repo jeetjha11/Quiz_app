@@ -1,28 +1,46 @@
 from datetime import datetime
 
-
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.authentication import BaseAuthentication
+from rest_framework.decorators import authentication_classes, permission_classes, api_view
+from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 
-from . models import UserModel
-from . serializers import UserSerializer
+from .helper import generate_key
+from .models import UserModel
+from .serializers import UserSerializer, LoginSerializer
 
 
 # Create your views here.
 
 
-@api_view(['post', 'get', 'patch', 'put', 'delete'])
-def user_view(request):
+@api_view(['post'])
+def login_view(request):
+    print("Implement this")
+    # implement this
+
+
+@api_view(['post'])
+def user_register_view(request):
     try:
         if request.method == 'POST':
             try:
                 data = request.data
                 serializer = UserSerializer(data=data)
                 serializer.is_valid(raise_exception=True)
+                authenticate_key = generate_key(request.data.get('user_email'), request.data.get('user_password'))
+                login_data = {
+                    "user_email": request.data.get('user_email'),
+                    "user_password": request.data.get('user_password'),
+                    "authenticate_key": authenticate_key
+                }
+                login_serializer = LoginSerializer(data=login_data)
+                login_serializer.is_valid(raise_exception=True)
+                login_serializer.save()
                 serializer.save()
                 return Response({
                     "message": "data has been saved",
+                    "Access Key": authenticate_key,
                     "data": serializer.data
                 }, status=status.HTTP_200_OK)
             except Exception as e:
@@ -30,6 +48,16 @@ def user_view(request):
                     "message": "Some Error Occurs",
                     "error": e.args
                 }, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({
+            "message": "Some Error Occurs",
+            "error": e.args
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['post', 'get', 'patch', 'put', 'delete'])
+def user_view(request):
+    try:
         if request.method == 'GET':
             try:
                 user_id = request.query_params.get('user_id')
